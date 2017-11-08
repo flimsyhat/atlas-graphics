@@ -1,27 +1,30 @@
 var scene, camera, renderer;
-var plane, displacement, uniforms, geometry;
+var plane, displacement, uniforms, geometry, circle, circle2;
 var fov = 30,
     isUserInteracting = false,
-    cameraDistance = 120,
+    cameraDistance = 80,
     onMouseDownMouseX = 0, onMouseDownMouseY = 0,
     lon = 0, onMouseDownLon = 0,
     lat = 0, onMouseDownLat = 0,
     phi = 0, theta = 0;
+var A, B;
 
 $(function() {
     init();
 });
 
 function init() {
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color( 0xf5f5f5 );
-  // camera = new THREE.PerspectiveCamera( fov, window.innerWidth / window.innerHeight, 1, 1000 );
+
   camera = new THREE.PerspectiveCamera( fov, 1, 1, 1000 );
   camera.position.set( 0, 0, 100 );
+  camera.lookAt(scene.position);
+
   renderer = new THREE.WebGLRenderer({antialias:true});
   renderer.setSize( 800, 800 );
   $('#container').append( renderer.domElement );
-  addLights();
 
   uniforms = {
     amplitude: { value: 1.0 },
@@ -36,7 +39,7 @@ function init() {
 
   planeShader.transparent = true;
 
-  geometry = new THREE.PlaneBufferGeometry( 40, 40, 200, 200);
+  geometry = new THREE.PlaneBufferGeometry( 52, 52, 80, 80);
 
   displacement = new Float32Array( geometry.attributes.position.count );
 
@@ -45,27 +48,29 @@ function init() {
   plane = new THREE.Mesh(
       geometry,
       planeShader
-      // new THREE.MeshLambertMaterial({color:0x666666, wireframe:false})
   );
-
-  // size_plane_length = plane.geometry.vertices.length;
-
-  plane.rotation.x = -Math.PI / 2;
-  plane.rotation.y = Math.PI / 6;
-  plane.rotation.z = Math.PI / 4;
   scene.add( plane );
 
-  $(document).on( 'mousedown', onMouseDown );
-  $(document).on( 'mousewheel', onMouseWheel );
+  var circle_geometry = new THREE.CircleBufferGeometry( 2, 32 );
+  var circle_material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+  var circle_material_2 = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+
+  circle = new THREE.Mesh( circle_geometry, circle_material );
+  circle2 = new THREE.Mesh( circle_geometry, circle_material_2 );
+
+  scene.add( circle );
+  scene.add( circle2 );
+
+  circle.position.set(0,0,1)
+  circle2.position.set(0,0,1)
+
+  circle.material.transparent = true;
+  circle2.material.transparent = true;
+
+  var dragControls = new THREE.DragControls([circle, circle2], camera, renderer.domElement);
+
   $(window).on( 'resize', onWindowResize );
   animate();
-}
-
-function addLights() {
-    var dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(100, 100, 50);
-    var ambientLight = new THREE.AmbientLight( 0xffffff );
-    scene.add(ambientLight, dirLight);
 }
 
 frame = 0;
@@ -80,6 +85,20 @@ var time = 0;
 
 function animateWave() {
 
+  var $radio = $('input[name=wave]:checked');
+  var updateDay = $radio.val();
+  var id = $radio.attr('id');
+
+  A = parseInt(id[0]);
+  B = parseInt(id[1]);
+
+  var freq1 = $("#freq1").val();
+  var posx1 = circle.position.x;
+  var posy1 = circle.position.y;
+  var freq2 = $("#freq2").val();
+  var posx2 = circle2.position.x;
+  var posy2 = circle2.position.y;
+
   time += .05;
 
   plane.geometry.attributes.displacement.needsUpdate = true;
@@ -87,62 +106,21 @@ function animateWave() {
   for ( var i = 0; i < displacement.length; i ++ ) {
         let vx = plane.geometry.attributes.position.getX(i);
         let vy = plane.geometry.attributes.position.getY(i);
-				displacement[ i ] = circularWave(20, 5, vx, vy, time, .04) +
-                            circularWave(20, -5, vx, vy, time, .02)
+				displacement[ i ] = A * circularWave(posx1, posy1, vx, vy, time, freq1) +
+                            B * circularWave(posx2, posy2, vx, vy, time, freq2)
 			}
+
+  circle.material.opacity = 0.5 + Math.sin(freq1/400 - freq1 * time)/2;
+  circle2.material.opacity = 0.5 + Math.sin(freq2/400 - freq2 * time)/2;
 }
 
 function circularWave(x, y, vx, vy, t, f) {
-  return Math.sin( f * (Math.pow((vx - x), 2) + Math.pow((vy - y), 2)) - t);
+  return Math.sin( f/400 * (Math.pow((vx - x), 2) + Math.pow((vy - y), 2)) - f * t);
 }
 
 function render() {
-
-  lat = Math.max( - 15, Math.min( 65, lat ) );
-  phi = THREE.Math.degToRad( 90 - lat );
-  // theta = THREE.Math.degToRad( lon );
-
-  camera.position.x = cameraDistance * Math.sin( phi ) * Math.cos( theta );
-  camera.position.y = cameraDistance * Math.cos( phi );
-  camera.position.z = cameraDistance * Math.sin( phi ) * Math.sin( theta );
-
-  camera.lookAt( scene.position );
-
   renderer.render( scene, camera );
 }
 
-function onMouseWheel(event) {
-
-  cameraDistance += event.originalEvent.deltaY * 0.1;
-  cameraDistance = Math.min( cameraDistance, camera.far );
-  cameraDistance = Math.max( cameraDistance, camera.near );
-}
-
-function onMouseDown(event) {
-
-  event.preventDefault();
-  onPointerDownPointerX = event.clientX;
-  onPointerDownPointerY = event.clientY;
-  onPointerDownLon = lon;
-  onPointerDownLat = lat;
-  planeZrotation = plane.rotation.z
-
-  $(document).on( 'mousemove', onMouseMove );
-  $(document).on( 'mouseup', onMouseUp );
-}
-
-function onMouseMove(event) {
-  plane.rotation.z = ( event.clientX - onPointerDownPointerX) * 0.001 + planeZrotation
-  // lon = ( event.clientX - onPointerDownPointerX ) * 0.1 + onPointerDownLon;
-  lat = ( event.clientY - onPointerDownPointerY ) * 0.1 + onPointerDownLat;
-}
-
-function onMouseUp(event) {
-  $(document).off( 'mousemove' );
-  $(document).off( 'mouseup' );
-}
-
 function onWindowResize() {
-  // renderer.setSize( window.innerWidth, window.innerHeight );
-  // camera.projectionMatrix.makePerspective( fov, window.innerWidth / window.innerHeight, 1, 1000 );
 }

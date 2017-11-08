@@ -4,7 +4,7 @@
       font-family: Monospace;
       background-color: #ffffff;
       margin: 0px;
-      overflow: hidden;
+      overflow: scroll;
     }
 
     #container {
@@ -12,21 +12,57 @@
       margin: 50px auto;
     }
 
+    .slider {
+      margin: 10px auto;
+    }
+
     canvas {
       outline: 1px solid #cccccc;
       box-shadow: 4px 4px 5px #888888;
+    }
+
+    .sliders {
+      margin-top: 20px;
+      width: 200px;
+      display: inline-block;
+    }
+
+    form {
+      margin-bottom: 20px;
     }
 
     </style>
 
     <script src="three.js"></script>
     <script src="jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+    <script src="DragControls.js"></script>
     <script src="test.js"></script>
 
 </head>
 
 <body>
-  <div id="container"></div>
+  <div id="container">
+  <div class="sliders">
+    <h3>Source 1</h3>
+      <div>
+        Frequency
+        <input type="range" min="1" max="4" value="3" step="1" class="slider" id="freq1">
+      </div>
+  </div>
+  <div class="sliders">
+    <h3>Source 2</h3>
+      <div>
+        Frequency
+        <input type="range" min="1" max="4" value="2" step="1" class="slider" id="freq2">
+      </div>
+  </div>
+  <form action="">
+    <input type="radio" name="wave" id="10" value="A"> Wave A<br>
+    <input type="radio" name="wave" id="01" value="B"> Wave B<br>
+    <input type="radio" name="wave" id="11" value="Both" checked> Combined
+</form>
+</div>
+
 
   <script type="x-shader/x-vertex" id="vertexshader">
 			uniform float amplitude;
@@ -36,7 +72,7 @@
 			void main() {
 				vNormal = normal;
         distance = displacement * 0.5 + 0.5;
-				vec3 newPosition = position + amplitude * normal * vec3( displacement );
+				vec3 newPosition = position + amplitude * normal * vec3( 1.0 );
 				gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
 			}
   </script>
